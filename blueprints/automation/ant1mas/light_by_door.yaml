@@ -17,7 +17,7 @@ blueprint:
 
     - Created custom input_boolean helper.
   domain: automation
-  source_url: https://github.com/ant1mas/HomeAssistant/blueprints/automation/ant1mas/light_by_door.yaml
+  source_url: https://github.com/Ant1mas/HomeAssistant/blob/master/blueprints/automation/ant1mas/light_by_door.yaml
   input:
     door_sensor_entity:
       name: Door Sensor
