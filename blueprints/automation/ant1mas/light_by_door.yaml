@@ -1,0 +1,128 @@
+blueprint:
+  name: Light activated by door
+  description: >
+    # About
+
+    Turn on light when someone enters room and then turn off the light when person leaves.
+
+    Works using door sensor.
+
+    If door was opened way too long then turn off light immediately after door closed.
+
+    ## Requirements
+
+    - Door sensor attached to door of the room.
+
+    - Light is `Switch` object.
+
+    - Created custom input_boolean helper.
+  domain: automation
+  source_url: https://github.com/ant1mas/HomeAssistant/blueprints/automation/ant1mas/light_by_door.yaml
+  input:
+    door_sensor_entity:
+      name: Door Sensor
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: door
+    switch_target:
+      name: Light
+      selector:
+        entity:
+          filter:
+            - domain:
+                - switch
+    state_holder:
+      name: State holder
+      description: Custom input_boolean for keeping state of room visitor. Create one in [Settings] -> [Devices] -> [Helpers] -> [+ Create Helper] -> [Toggle]
+      selector:
+        entity:
+          filter:
+            - domain:
+                - input_boolean
+    opened_door_wait:
+      name: Opened door max time
+      description: Maximum time for door is opened. After this time light will be turned off immediately after closing door.
+      default: 10
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: seconds
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  opened_door_wait: !input opened_door_wait
+
+trigger:
+  - platform: state
+    entity_id: !input door_sensor_entity
+    from: "off"
+    to: "on"
+    id: opened
+    alias: When door opened
+  - platform: state
+    entity_id: !input door_sensor_entity
+    from: "on"
+    to: "off"
+    id: closed
+    alias: When door closed
+  - platform: state
+    entity_id: !input switch_target
+    attribute: raw_state
+    from: true
+    to: false
+    id: light turned off
+
+action:
+  - if:
+      - condition: trigger
+        id: opened
+    then:
+      - alias: "Turn on the light"
+        service: switch.turn_on
+        data: {}
+        target:
+          entity_id: !input switch_target
+  - if:
+      - condition: trigger
+        id: closed
+    then:
+      - condition: state
+        entity_id: !input switch_target
+        state: "on"
+      - if:
+          - condition: state
+            entity_id: !input state_holder
+            state: "on"
+        then:
+          - alias: "Turn off the light"
+            service: switch.turn_off
+            target:
+              entity_id: !input switch_target
+        else:
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ now().timestamp() -
+                  trigger.from_state.last_changed.timestamp() >= opened_door_wait }}
+            then:
+              - alias: "Turn off the light"
+                service: switch.turn_off
+                target:
+                  entity_id: !input switch_target
+            else:
+              - service: input_boolean.turn_on
+                data: {}
+                target:
+                  entity_id: !input state_holder
+  - if:
+      - condition: trigger
+        id: light turned off
+    then:
+      - service: input_boolean.turn_off
+        data: {}
+        target:
+          entity_id: !input state_holder
