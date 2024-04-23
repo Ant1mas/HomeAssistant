@@ -71,9 +71,8 @@ trigger:
     alias: When door closed
   - platform: state
     entity_id: !input switch_target
-    attribute: raw_state
-    from: true
-    to: false
+    from: "on"
+    to: "off"
     id: light turned off
 
 action:
